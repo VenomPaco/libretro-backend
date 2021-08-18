@@ -220,18 +220,6 @@ pub struct Retro< B: Core > {
     total_audio_samples_uploaded: usize
 }
 
-macro_rules! set_callback {
-    ($output: expr, $input: expr) => (
-        unsafe {
-            if $input == mem::transmute( 0 as usize ) {
-                $output = None;
-            } else {
-                $output = Some( $input );
-            }
-        }
-    )
-}
-
 impl< B: Core > Retro< B > {
     fn new( core: B ) -> Self {
         Retro {
@@ -280,28 +268,30 @@ impl< B: Core > Retro< B > {
         info.block_extract = core_info.allow_frontend_to_extract_archives == false;
     }
 
-    pub fn on_set_environment( callback: libretro_sys::EnvironmentFn ) {
-        set_callback!( ENVIRONMENT_CALLBACK, callback );
+    pub fn on_set_environment( callback: Option<libretro_sys::EnvironmentFn> ) {
+        unsafe {
+            ENVIRONMENT_CALLBACK = callback;
+        }
     }
 
-    pub fn on_set_video_refresh( &mut self, callback: libretro_sys::VideoRefreshFn ) {
-        set_callback!( self.video_refresh_callback, callback );
+    pub fn on_set_video_refresh( &mut self, callback: Option<libretro_sys::VideoRefreshFn> ) {
+        self.video_refresh_callback = callback;
     }
 
-    pub fn on_set_audio_sample( &mut self, callback: libretro_sys::AudioSampleFn ) {
-        set_callback!( self.audio_sample_callback, callback );
+    pub fn on_set_audio_sample( &mut self, callback: Option<libretro_sys::AudioSampleFn> ) {
+        self.audio_sample_callback = callback;
     }
 
-    pub fn on_set_audio_sample_batch( &mut self, callback: libretro_sys::AudioSampleBatchFn ) {
-        set_callback!( self.audio_sample_batch_callback, callback );
+    pub fn on_set_audio_sample_batch( &mut self, callback: Option<libretro_sys::AudioSampleBatchFn> ) {
+        self.audio_sample_batch_callback = callback;
     }
 
-    pub fn on_set_input_poll( &mut self, callback: libretro_sys::InputPollFn ) {
-        set_callback!( self.input_poll_callback, callback );
+    pub fn on_set_input_poll( &mut self, callback: Option<libretro_sys::InputPollFn> ) {
+        self.input_poll_callback = callback;
     }
 
-    pub fn on_set_input_state( &mut self, callback: libretro_sys::InputStateFn ) {
-        set_callback!( self.input_state_callback, callback );
+    pub fn on_set_input_state( &mut self, callback: Option<libretro_sys::InputStateFn> ) {
+        self.input_state_callback = callback;
     }
 
     pub fn on_get_system_av_info( &mut self, info: *mut libretro_sys::SystemAvInfo ) {
@@ -568,7 +558,7 @@ macro_rules! libretro_core {
 
         #[doc(hidden)]
         #[no_mangle]
-        pub unsafe extern "C" fn retro_set_environment( callback: $crate::libretro_sys::EnvironmentFn ) {
+        pub unsafe extern "C" fn retro_set_environment( callback: Option<$crate::libretro_sys::EnvironmentFn> ) {
             $crate::Retro::< $core >::on_set_environment( callback )
         }
 
@@ -576,35 +566,35 @@ macro_rules! libretro_core {
         #[no_mangle]
         pub unsafe extern "C" fn retro_set_video_refresh( callback: $crate::libretro_sys::VideoRefreshFn ) {
             assert_ne!( LIBRETRO_INSTANCE, 0 as *mut _ );
-            (&mut *LIBRETRO_INSTANCE).on_set_video_refresh( callback )
+            (&mut *LIBRETRO_INSTANCE).on_set_video_refresh( Some(callback) )
         }
 
         #[doc(hidden)]
         #[no_mangle]
         pub unsafe extern "C" fn retro_set_audio_sample( callback: $crate::libretro_sys::AudioSampleFn ) {
             assert_ne!( LIBRETRO_INSTANCE, 0 as *mut _ );
-            (&mut *LIBRETRO_INSTANCE).on_set_audio_sample( callback )
+            (&mut *LIBRETRO_INSTANCE).on_set_audio_sample( Some(callback) )
         }
 
         #[doc(hidden)]
         #[no_mangle]
         pub unsafe extern "C" fn retro_set_audio_sample_batch( callback: $crate::libretro_sys::AudioSampleBatchFn ) {
             assert_ne!( LIBRETRO_INSTANCE, 0 as *mut _ );
-            (&mut *LIBRETRO_INSTANCE).on_set_audio_sample_batch( callback )
+            (&mut *LIBRETRO_INSTANCE).on_set_audio_sample_batch( Some(callback) )
         }
 
         #[doc(hidden)]
         #[no_mangle]
         pub unsafe extern "C" fn retro_set_input_poll( callback: $crate::libretro_sys::InputPollFn ) {
             assert_ne!( LIBRETRO_INSTANCE, 0 as *mut _ );
-            (&mut *LIBRETRO_INSTANCE).on_set_input_poll( callback )
+            (&mut *LIBRETRO_INSTANCE).on_set_input_poll( Some(callback) )
         }
 
         #[doc(hidden)]
         #[no_mangle]
         pub unsafe extern "C" fn retro_set_input_state( callback: $crate::libretro_sys::InputStateFn ) {
             assert_ne!( LIBRETRO_INSTANCE, 0 as *mut _ );
-            (&mut *LIBRETRO_INSTANCE).on_set_input_state( callback )
+            (&mut *LIBRETRO_INSTANCE).on_set_input_state( Some(callback) )
         }
 
         #[doc(hidden)]
